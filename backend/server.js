@@ -152,58 +152,14 @@ app.get('/hubs/:hub_id/projects/:project_id/topFolders', async (req, res) => {
     });
 
     logger.info(`Successfully fetched top-level folders: ${response.status}`);
-    const projectFilesFolder = response.data.data.filter(folder => folder.attributes?.displayName === "Project Files")[0];
-    let folderId;
-    if (!projectFilesFolder) {
-      logger.warn('Project Files folder not found. Fetching contents from all top-level folders.');
-      // If "Project Files" folder is not found, fetch contents from all top-level folders
-      folderId = response.data.data.map(folder => folder.id); // Get all folder IDs
+    
+    // Return the top-level folders directly, without fetching their contents
+    // This allows the frontend to filter and display only the "Project Files" folder
+    if (response.data && Array.isArray(response.data.data)) {
+      res.json(response.data.data);
     } else {
-      folderId = projectFilesFolder.id;
-      logger.info(`Project Files Folder ID: ${folderId}`);
-    }
-
-    // Fetch contents from all folder IDs
-    const fetchContents = async (folderId) => {
-      const contentsUrl = `https://developer.api.autodesk.com/data/v1/projects/${project_id}/folders/${folderId}/contents`;
-      logger.info(`Fetching contents from Autodesk API: ${contentsUrl}`);
-      try {
-        const contentsResponse = await axios.get(contentsUrl, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`
-          }
-        });
-
-        logger.info(`Successfully fetched contents: ${contentsResponse.status}`);
-        // Include the folder ID in the response data
-        const contentsWithFolderId = contentsResponse.data.data.map(item => ({
-          ...item,
-          folderId: item.type === 'folders' ? item.id : null
-        }));
-        return contentsWithFolderId;
-      } catch (contentsError) {
-        logger.error(`Failed to fetch folder contents: ${contentsError.message}`);
-        res.status(500).json({ message: 'Failed to fetch folder contents', error: contentsError.message });
-        return null;
-      }
-    };
-
-    if (Array.isArray(folderId)) {
-      // Fetch contents for each folder ID
-      const allContents = [];
-      for (const id of folderId) {
-        const contents = await fetchContents(id);
-        if (contents) {
-          allContents.push(...contents);
-        }
-      }
-      res.json(allContents); // Send combined contents data
-    } else {
-      // Fetch contents for a single folder ID
-      const contents = await fetchContents(folderId);
-      if (contents) {
-        res.json(contents); // Send only the contents data
-      }
+      logger.warn('Unexpected response format from Autodesk API');
+      res.status(500).json({ message: 'Unexpected response format from Autodesk API' });
     }
   } catch (error) {
     logger.error(`Failed to fetch top-level folders: ${error.message}`);

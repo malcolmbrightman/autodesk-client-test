@@ -132,7 +132,33 @@ const fetchTopFolders = async () => {
       headers: { Authorization: `Bearer ${props.accessToken}` }
     });
     if (response.status !== 200) throw new Error(`Server responded with status ${response.status}`);
-    topFolders.value = Array.isArray(response.data) ? response.data : [];
+    
+    // Filter the response to only include the "Project Files" folder
+    const allTopFolders = Array.isArray(response.data) ? response.data : [];
+    const projectFilesFolder = allTopFolders.find(folder =>
+        folder.type === 'folders' &&
+        folder.id === 'urn:adsk.wipprod:fs.folder:co.Fqb-B6hITL2B_KNbo2y5Mg'
+    );
+    
+    if (projectFilesFolder) {
+        // Only show the "Project Files" folder
+        topFolders.value = [projectFilesFolder];
+    } else {
+        // Fallback: try to find by name if the ID doesn't match
+        const folderByName = allTopFolders.find(folder =>
+            folder.type === 'folders' &&
+            (folder.attributes?.name === 'Project Files' || folder.attributes?.displayName === 'Project Files')
+        );
+        
+        if (folderByName) {
+            topFolders.value = [folderByName];
+        } else {
+            // If "Project Files" folder is not found, show an error
+            console.warn('Could not find "Project Files" folder in the topFolders response.');
+            topFolders.value = []; // Keep it empty
+            folderError.value = 'Could not find the main "Project Files" folder.';
+        }
+    }
   } catch (err) {
     folderError.value = err.response?.data?.message || err.message || 'Failed to fetch top folders';
     console.error('Failed to fetch top folders', err);
