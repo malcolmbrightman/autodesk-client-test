@@ -187,7 +187,7 @@ const submitDownloadJob = async () => {
   const body = {
     project_id: selectedProjectId.value,
     api_key: apiKey, // Send API key in the body instead of header for the proxy
-    destination: `./downloads/${selectedProject.value?.attributes?.name || 'project'}`, // Removed item name from destination
+    destination: `./downloads/${(selectedProject.value?.attributes?.name || 'project').replace(/[:<>"/\\|?*]/g, '_')}`, // Sanitize project name for Windows compatibility
   };
 
   if (selectedItem.value.type === 'folders') {
